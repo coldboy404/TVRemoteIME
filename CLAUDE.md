@@ -15,8 +15,8 @@ The app runs an embedded HTTP server (NanoHTTPD on port 9978) that serves a web 
 
 ## Current Version
 
-- **versionCode**: 16
-- **versionName**: 2.1.3
+- **versionCode**: 17
+- **versionName**: 2.1.4
 
 ## Build Commands
 
