@@ -25,7 +25,7 @@ public class AutoUpdateManager {
     private Context context;
     private Handler handler;
     private File localFile = null;
-    private static String VERSION_URL = "https://gitee.com/kingthy/TVRemoteIME/raw/master/released/version.json";
+    private static String VERSION_URL = "https://raw.githubusercontent.com/coldboy404/TVRemoteIME/master/released/version.json";
     public AutoUpdateManager(Context context, Handler handler){
         this.context = context;
         this.handler = handler;

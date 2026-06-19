@@ -133,7 +133,11 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/zxcLine">
 
-        <Button style="@style/btn_input_style" android:text="," android:layout_weight="0.8" />
+        <Button
+            android:id="@+id/btnLang"
+            style="@style/btn_input_style"
+            android:text="中"
+            android:layout_weight="0.8" />
         <Button style="@style/btn_input_style" android:text="." android:layout_weight="0.8" />
 
         <ImageButton

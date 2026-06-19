@@ -1,6 +1,6 @@
 {
-    "versionCode": 14,
-    "versionName": "2.1.1",
-    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.1/IMEService-release.apk",
-    "message": "1. 修复触控板页面状态轮询会不断重置鼠标指针自动隐藏计时器的问题。\r\n2. 状态检测改为只读接口，不再伪造鼠标移动。\r\n3. 保持触控板鼠标指针15秒无操作后自动隐藏。"
+    "versionCode": 15,
+    "versionName": "2.1.2",
+    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.2/IMEService-release.apk",
+    "message": "1. 修复Web遥控按钮图片资源丢失导致按钮消失的问题。\r\n2. 修复Web界面最新版本读取旧远程脚本导致显示1.4.1的问题。\r\n3. TV端软键盘新增中/英切换按钮，中文模式下支持常用拼音自动上屏。"
 }

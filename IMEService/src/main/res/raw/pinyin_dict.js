@@ -1,5 +1,5 @@
 // 常用中文拼音候选词表（离线、轻量版）
-// Web 端使用，避免引入在线接口；未命中时会提示直接用系统中文键盘输入后发送。
+// Web 端和 TV 端软键盘共用；避免引入在线接口。
 window.PINYIN_DICT = {
     "a": ["啊", "阿"],
     "ai": ["爱", "哎", "唉", "矮", "挨"],
@@ -399,9 +399,8 @@ window.PINYIN_DICT = {
     "dianshi": ["电视"],
     "yaokong": ["遥控"],
     "shurufa": ["输入法"],
-    "xiaoh" : ["小盒"],
     "xiaohe": ["小盒"],
     "jingling": ["精灵"],
-    "xiaohjingling": ["小盒精灵"],
     "xiaohejingling": ["小盒精灵"]
 };
+if (typeof module !== "undefined") module.exports = window.PINYIN_DICT;

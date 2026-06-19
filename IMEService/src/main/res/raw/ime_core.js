@@ -611,19 +611,12 @@ function loadTorrentItems(){
 	});
 }
 
-var upgradeScript = null;
-
 function upgrade() {
 	$.get('/version', function(version){
 		$('#curVer').html(version);
+		$('#newVer').html(version);
+		$('#newVerUrl').hide();
 	});
-	if(null != upgradeScript){
-		document.body.removeChild(upgradeScript);
-	}
-	var upgradeScript = document.createElement("script");
-	upgradeScript.type = "text/javascript";
-	upgradeScript.src = "http://tvremoteime-1255402058.cos.ap-guangzhou.myqcloud.com/upgrade.js";
-	document.body.appendChild(upgradeScript);
 }
 reloadAppList();
 loadFileList("");
