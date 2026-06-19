@@ -184,17 +184,20 @@ Log.i(TAG, "Screen size: " + screenWidth + "x" + screenHeight);
      * @return 新的鼠标位置 [x, y]
      */
     public int[] moveMouse(int dx, int dy) {
-        mouseX = Math.max(0, Math.min(screenWidth - 1, mouseX + dx));
-        mouseY = Math.max(0, Math.min(screenHeight - 1, mouseY + dy));
+        boolean hasMovement = dx != 0 || dy != 0;
+        if (hasMovement) {
+            mouseX = Math.max(0, Math.min(screenWidth - 1, mouseX + dx));
+            mouseY = Math.max(0, Math.min(screenHeight - 1, mouseY + dy));
 
-        mainHandler.post(() -> {
-            if (cursorOverlay != null) {
-                cursorOverlay.updatePosition(mouseX, mouseY);
-            }
-        });
+            mainHandler.post(() -> {
+                if (cursorOverlay != null) {
+                    cursorOverlay.updatePosition(mouseX, mouseY);
+                }
+            });
 
-        // 重置自动隐藏计时器
-        resetHideTimer();
+            // 只有真实移动才重置自动隐藏计时器；状态探测(dx=0,dy=0)不应让光标一直显示
+            resetHideTimer();
+        }
 
         return new int[]{mouseX, mouseY};
     }
@@ -407,6 +410,13 @@ Log.i(TAG, "Screen size: " + screenWidth + "x" + screenHeight);
      */
     public int[] getMousePosition() {
         return new int[]{mouseX, mouseY};
+    }
+
+    /**
+     * 检查光标是否正在显示
+     */
+    public boolean isCursorShowing() {
+        return cursorOverlay != null && cursorOverlay.isShowing();
     }
 
 /**

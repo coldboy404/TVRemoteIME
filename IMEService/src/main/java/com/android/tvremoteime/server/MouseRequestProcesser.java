@@ -109,10 +109,12 @@ public class MouseRequestProcesser implements RequestProcesser {
         MouseAccessibilityService service = MouseAccessibilityService.getInstance();
 
         int mouseX = 0, mouseY = 0;
+        boolean cursorShowing = false;
         if (service != null) {
             int[] pos = service.getMousePosition();
             mouseX = pos[0];
             mouseY = pos[1];
+            cursorShowing = service.isCursorShowing();
         }
 
         // 获取屏幕尺寸
@@ -128,8 +130,8 @@ public class MouseRequestProcesser implements RequestProcesser {
         }
 
         String json = String.format(
-            "{\"serviceEnabled\":%b,\"mouseX\":%d,\"mouseY\":%d,\"screenWidth\":%d,\"screenHeight\":%d,\"apiLevel\":%d}",
-            serviceEnabled, mouseX, mouseY, screenWidth, screenHeight, Build.VERSION.SDK_INT
+            "{\"serviceEnabled\":%b,\"cursorShowing\":%b,\"mouseX\":%d,\"mouseY\":%d,\"screenWidth\":%d,\"screenHeight\":%d,\"apiLevel\":%d}",
+            serviceEnabled, cursorShowing, mouseX, mouseY, screenWidth, screenHeight, Build.VERSION.SDK_INT
         );
 
         return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, json);

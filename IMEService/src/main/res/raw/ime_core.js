@@ -884,16 +884,20 @@ function mouseLongClick() {
 	});
 }
 
-// 检查 ADB 状态
+// 检查触控板服务状态（只查询状态，不发送 /mouse/move，避免重置光标自动隐藏计时器）
 function checkAdbStatus() {
-	$.post("/mouse/move", { dx: 0, dy: 0 }, function(data) {
-		if (data && data.indexOf('ok:') === 0) {
-			$('#adb-status').text('ADB: 已连接').removeClass('disconnected').addClass('connected');
+	$.get("/mouse/status", function(data) {
+		if (typeof data === 'string') {
+			try { data = JSON.parse(data); } catch (e) { data = null; }
+		}
+		if (data && data.serviceEnabled) {
+			$('#adb-status').text('触控板: 已启用').removeClass('disconnected').addClass('connected');
+			$('#mouse-pos').text('位置: ' + data.mouseX + ', ' + data.mouseY + (data.cursorShowing ? '' : '（已隐藏）'));
 		} else {
-			$('#adb-status').text('ADB: 未连接').removeClass('connected').addClass('disconnected');
+			$('#adb-status').text('触控板: 未启用').removeClass('connected').addClass('disconnected');
 		}
 	}).fail(function() {
-		$('#adb-status').text('ADB: 未连接').removeClass('connected').addClass('disconnected');
+		$('#adb-status').text('触控板: 未启用').removeClass('connected').addClass('disconnected');
 	});
 }
 
