@@ -1,6 +1,6 @@
 {
-    "versionCode": 11,
-    "versionName": "1.4.1",
-    "installAPK": "https://gitee.com/kingthy/TVRemoteIME/raw/master/released/IMEService-release.apk",
-    "message": "1.支持更改投屏名称。\r\n2.TV端键盘添加隐藏键。\r\n3.修复已知BUG。"
+    "versionCode": 13,
+    "versionName": "2.1.0",
+    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.0/IMEService-release.apk",
+    "message": "1. 触控板鼠标指针15秒无操作后自动隐藏。\r\n2. Web远程输入新增离线拼音中文候选输入。\r\n3. 优化触控板和远程输入体验。"
 }

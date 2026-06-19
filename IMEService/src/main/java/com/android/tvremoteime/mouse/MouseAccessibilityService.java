@@ -32,7 +32,7 @@ public class MouseAccessibilityService extends AccessibilityService {
     private int screenHeight;
 
     // 自动隐藏光标相关
-    private static final long CURSOR_HIDE_DELAY = 5000; // 5秒不动就隐藏
+    private static final long CURSOR_HIDE_DELAY = 15000; // 15秒不动就隐藏
     private Runnable hideCursorRunnable;
     private boolean isCursorHidden = false;
 
@@ -116,7 +116,7 @@ Log.i(TAG, "Screen size: " + screenWidth + "x" + screenHeight);
 
             // 初始化自动隐藏任务并启动计时器
             hideCursorRunnable = this::autoHideCursor;
-            resetHideTimer(); // 启动5秒自动隐藏计时器
+            resetHideTimer(); // 启动15秒自动隐藏计时器
         });
     }
 
@@ -147,7 +147,7 @@ Log.i(TAG, "Screen size: " + screenWidth + "x" + screenHeight);
             isCursorHidden = false;
         }
 
-        // 重新安排5秒后隐藏
+        // 重新安排15秒后隐藏
         mainHandler.postDelayed(hideCursorRunnable, CURSOR_HIDE_DELAY);
     }
 

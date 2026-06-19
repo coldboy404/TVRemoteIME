@@ -15,9 +15,9 @@
 			<div class="header-content">
 				<h1 class="app-title">📺 小盒精灵</h1>
 				<div class="version-info">
-					<span>当前版本：<span class="version-code" id="curVer">2.0.0</span></span>
+					<span>当前版本：<span class="version-code" id="curVer">2.1.0</span></span>
 					<a href="#" target="_blank" id="newVerUrl" class="update-link" style="display:none;">
-						<span>最新版本：<span class="version-code" id="newVer">2.0.0</span></span>
+						<span>最新版本：<span class="version-code" id="newVer">2.1.0</span></span>
 					</a>
 				</div>
 			</div>
@@ -75,6 +75,17 @@
 				<div class="action-buttons">
 				    <button type="button" class="btn-secondary" id="btnDel" data-key='67' aria-label="退格">退格</button>
 				    <button type="button" class="btn-secondary" id="btnCls" data-key='cls' aria-label="清空">清空</button>
+				</div>
+				<div class="pinyin-panel">
+					<div class="pinyin-header">
+						<span>中文拼音输入</span>
+						<small>输入拼音，点候选词上屏</small>
+					</div>
+					<div class="pinyin-input-row">
+						<input type="text" id="pinyinInput" placeholder="例如 nihao / zhongguo" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="拼音输入">
+						<button type="button" class="btn-secondary" id="btnPinyinClear">清除</button>
+					</div>
+					<div id="pinyinCandidates" class="pinyin-candidates"></div>
 				</div>
 			</section>
 
@@ -256,6 +267,7 @@
 	</div>
 
 	<script src="/jquery_min.js"></script>
+	<script src="/pinyin_dict.js"></script>
 	<script src="/ime_core.js"></script>
 </body>
 </html>

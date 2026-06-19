@@ -1,0 +1,2 @@
+[示例]
+CCTV-1=https://tv.cctv.com/live/cctv1/
