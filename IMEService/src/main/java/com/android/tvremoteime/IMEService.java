@@ -26,12 +26,6 @@ import com.android.tvremoteime.server.RemoteServerFileManager;
 import com.android.tvremoteime.adb.AdbHelper;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 
 public class IMEService extends InputMethodService implements View.OnClickListener{
@@ -52,66 +46,6 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 	private LinearLayout qweLine = null;
 	private LinearLayout asdLine = null;
 	private LinearLayout zxcLine = null;
-	private Button btnLang = null;
-	private boolean chineseMode = false;
-	private StringBuilder pinyinBuffer = new StringBuilder();
-	private TextView pinyinStatusView = null;
-	private static final Map<String, String[]> PINYIN_DICT = new HashMap<>();
-	private static final Set<String> PINYIN_PREFIXES = new HashSet<>();
-
-	static {
-		addPinyin("ni", "你", "呢", "尼");
-		addPinyin("hao", "好", "号", "浩");
-		addPinyin("nihao", "你好");
-		addPinyin("zhong", "中", "种", "重");
-		addPinyin("guo", "国", "过", "果");
-		addPinyin("zhongguo", "中国");
-		addPinyin("shi", "是", "时", "事");
-		addPinyin("jie", "界", "接", "解");
-		addPinyin("shijie", "世界");
-		addPinyin("xie", "谢", "写", "些");
-		addPinyin("xiexie", "谢谢");
-		addPinyin("zai", "在", "再");
-		addPinyin("jian", "见", "间", "件");
-		addPinyin("zaijian", "再见");
-		addPinyin("wo", "我", "窝");
-		addPinyin("men", "们", "门");
-		addPinyin("women", "我们");
-		addPinyin("de", "的", "得");
-		addPinyin("le", "了", "乐");
-		addPinyin("ma", "吗", "妈", "马");
-		addPinyin("bu", "不", "部");
-		addPinyin("mei", "没", "美");
-		addPinyin("you", "有", "又", "由");
-		addPinyin("meiyou", "没有");
-		addPinyin("ke", "可", "客");
-		addPinyin("yi", "以", "一", "已");
-		addPinyin("keyi", "可以");
-		addPinyin("kan", "看");
-		addPinyin("dianshi", "电视");
-		addPinyin("dian", "电", "点");
-		addPinyin("yao", "要", "遥", "药");
-		addPinyin("kong", "控", "空");
-		addPinyin("yaokong", "遥控");
-		addPinyin("shu", "输", "书", "数");
-		addPinyin("ru", "入", "如");
-		addPinyin("fa", "法", "发");
-		addPinyin("shurufa", "输入法");
-		addPinyin("xiao", "小", "笑");
-		addPinyin("he", "盒", "和", "喝");
-		addPinyin("jing", "精", "经");
-		addPinyin("ling", "灵", "令");
-		addPinyin("xiaohe", "小盒");
-		addPinyin("jingling", "精灵");
-		addPinyin("xiaohejingling", "小盒精灵");
-	}
-
-	private static void addPinyin(String key, String... values) {
-		PINYIN_DICT.put(key, values);
-		for (int i = 1; i <= key.length(); i++) {
-			PINYIN_PREFIXES.add(key.substring(0, i));
-		}
-	}
 
 	private static final int SERVER_START_ERROR = 901;
 	private static final int ERROR = 999;
@@ -147,7 +81,6 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 
 		capsOn = true;
 		btnCaps = mInputView.findViewById(R.id.btnCaps);
-		btnLang = mInputView.findViewById(R.id.btnLang);
 		qweLine = mInputView.findViewById(R.id.qweLine);
 		asdLine = mInputView.findViewById(R.id.asdLine);
 		zxcLine = mInputView.findViewById(R.id.zxcLine);
@@ -155,18 +88,9 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 		helpDialog = mInputView.findViewById(R.id.helpDialog);
 		qrCodeImage = helpDialog.findViewById(R.id.ivQRCode);
 		addressView = helpDialog.findViewById(R.id.tvAddress);
-		if (btnLang != null) {
-			pinyinStatusView = new TextView(this);
-			pinyinStatusView.setTextColor(0xFF0061A4);
-			pinyinStatusView.setTextSize(14);
-			pinyinStatusView.setPadding(8, 0, 8, 4);
-			pinyinStatusView.setVisibility(View.GONE);
-			mInputView.addView(pinyinStatusView, Math.max(0, mInputView.getChildCount() - 1));
-		}
 
-		// 为按钮设置点击监听器
+		// 为ImageButton设置点击监听器
 		btnCaps.setOnClickListener(this);
-		btnLang.setOnClickListener(this);
 		mInputView.findViewById(R.id.btnDelete).setOnClickListener(this);
 		mInputView.findViewById(R.id.btnSpace).setOnClickListener(this);
 		mInputView.findViewById(R.id.btnEnter).setOnClickListener(this);
@@ -380,7 +304,6 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 			Environment.debug(TAG, "keydown-event:" + keyCode);
 		}
 		//同步软键盘状态处理代码：不处理以下按键事件则有可能物理键盘字符输入与软键盘的大小写状态不同步
-		if (handleChineseKeyInput(keyCode)) return true;
 		if(keyCode == KeyEvent.KEYCODE_CAPS_LOCK) capsOn = !capsOn;
 		if ((keyCode >= KeyEvent.KEYCODE_0 && keyCode <= KeyEvent.KEYCODE_9)) {
 			if(commitText(String.valueOf(keyCode - KeyEvent.KEYCODE_0))) return true;
@@ -507,9 +430,7 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 	}
 	private void clickButton(View v, boolean resetCapsButtonState){
 		if(v instanceof Button){
-			if(v.getId() == R.id.btnLang){
-				toggleChineseMode();
-			}else if(v.getId() == R.id.btnClose){
+			if(v.getId() == R.id.btnClose){
 				this.finishInput();
 			}else {
 				commitText(((Button) v).getText().toString());
@@ -521,12 +442,7 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 			} else if (id == R.id.btnSpace) {
 				sendKeyCode(KeyEvent.KEYCODE_SPACE);
 			} else if (id == R.id.btnDelete) {
-				if (chineseMode && pinyinBuffer.length() > 0) {
-					pinyinBuffer.deleteCharAt(pinyinBuffer.length() - 1);
-					updatePinyinStatus();
-				} else {
-					sendKeyCode(KeyEvent.KEYCODE_DEL);
-				}
+				sendKeyCode(KeyEvent.KEYCODE_DEL);
 			} else if (id == R.id.btnCaps) {
 				toggleCapsState(resetCapsButtonState);
 			} else if (id == R.id.btnHelp) {
@@ -541,68 +457,6 @@ public class IMEService extends InputMethodService implements View.OnClickListen
 			v.requestFocusFromTouch();
 			focusedView = v;
 		}
-	}
-
-	private void toggleChineseMode(){
-		if (chineseMode && pinyinBuffer.length() > 0) {
-			commitPinyinBuffer();
-		}
-		chineseMode = !chineseMode;
-		pinyinBuffer.setLength(0);
-		if (btnLang != null) btnLang.setText(chineseMode ? "En" : "中");
-		updatePinyinStatus();
-	}
-
-	private boolean handleChineseKeyInput(int keyCode){
-		if (!chineseMode) return false;
-		if (keyCode >= KeyEvent.KEYCODE_A && keyCode <= KeyEvent.KEYCODE_Z) {
-			char c = (char) ('a' + keyCode - KeyEvent.KEYCODE_A);
-			pinyinBuffer.append(c);
-			String buffer = pinyinBuffer.toString();
-			if (!PINYIN_PREFIXES.contains(buffer)) {
-				pinyinBuffer.deleteCharAt(pinyinBuffer.length() - 1);
-				commitPinyinBuffer();
-				pinyinBuffer.append(c);
-			}
-			updatePinyinStatus();
-			return true;
-		}
-		if (keyCode == KeyEvent.KEYCODE_SPACE || keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
-			commitPinyinBuffer();
-			return true;
-		}
-		if (keyCode == KeyEvent.KEYCODE_DEL && pinyinBuffer.length() > 0) {
-			pinyinBuffer.deleteCharAt(pinyinBuffer.length() - 1);
-			updatePinyinStatus();
-			return true;
-		}
-		return false;
-	}
-
-	private void commitPinyinBuffer(){
-		if (pinyinBuffer.length() == 0) return;
-		String pinyin = pinyinBuffer.toString();
-		String[] candidates = PINYIN_DICT.get(pinyin);
-		commitText((candidates != null && candidates.length > 0) ? candidates[0] : pinyin);
-		pinyinBuffer.setLength(0);
-		updatePinyinStatus();
-	}
-
-	private void updatePinyinStatus(){
-		if (pinyinStatusView == null) return;
-		if (!chineseMode) {
-			pinyinStatusView.setVisibility(View.GONE);
-			return;
-		}
-		String pinyin = pinyinBuffer.toString();
-		StringBuilder status = new StringBuilder("中文输入");
-		if (pinyin.length() > 0) {
-			status.append("：").append(pinyin);
-			String[] candidates = PINYIN_DICT.get(pinyin);
-			if (candidates != null && candidates.length > 0) status.append(" → ").append(candidates[0]);
-		}
-		pinyinStatusView.setText(status.toString());
-		pinyinStatusView.setVisibility(View.VISIBLE);
 	}
 
 	private void toggleCapsState(boolean resetCapsButtonState){

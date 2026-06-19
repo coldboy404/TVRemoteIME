@@ -1,6 +1,6 @@
 {
-    "versionCode": 15,
-    "versionName": "2.1.2",
-    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.2/IMEService-release.apk",
-    "message": "1. 修复Web遥控按钮图片资源丢失导致按钮消失的问题。\r\n2. 修复Web界面最新版本读取旧远程脚本导致显示1.4.1的问题。\r\n3. TV端软键盘新增中/英切换按钮，中文模式下支持常用拼音自动上屏。"
+    "versionCode": 16,
+    "versionName": "2.1.3",
+    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.3/IMEService-release.apk",
+    "message": "1. 移除TV端软键盘半成品中文输入/中英切换，恢复稳定英文键盘。\r\n2. 保留触控板鼠标指针15秒自动隐藏修复。\r\n3. 保留Web端远程输入拼音候选、遥控按钮资源和版本显示修复。"
 }
