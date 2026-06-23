@@ -1,6 +1,6 @@
 {
-    "versionCode": 17,
-    "versionName": "2.1.4",
-    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.4/IMEService-release.apk",
-    "message": "1. 触控板鼠标指针无操作自动隐藏时间从15秒调整为8秒。\r\n2. 保留Web端远程输入拼音候选、遥控按钮资源和版本显示修复。"
+    "versionCode": 18,
+    "versionName": "2.1.5",
+    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.5/IMEService-release.apk",
+    "message": "1. 移除Web控制端的中文拼音输入候选框。\r\n2. 保留原有远程文本输入、遥控、触控板、文件和应用管理功能。"
 }

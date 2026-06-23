@@ -248,95 +248,11 @@ function loadTVList(){
 	}, "text");
 }
 
-// ==================== 中文拼音输入（离线轻量版） ====================
-function normalizePinyin(input) {
-	return (input || '')
-		.toLowerCase()
-		.replace(/ü/g, 'v')
-		.replace(/[^a-zv]/g, '');
-}
-
-function splitPinyin(input) {
-	var text = normalizePinyin(input);
-	var dict = window.PINYIN_DICT || {};
-	var result = [];
-	while (text.length > 0) {
-		var match = '';
-		var maxLen = Math.min(6, text.length);
-		for (var len = maxLen; len > 0; len--) {
-			var part = text.substring(0, len);
-			if (dict[part]) {
-				match = part;
-				break;
-			}
-		}
-		if (!match) return null;
-		result.push(match);
-		text = text.substring(match.length);
-	}
-	return result;
-}
-
-function buildPinyinCandidates(input) {
-	var key = normalizePinyin(input);
-	var dict = window.PINYIN_DICT || {};
-	if (!key) return [];
-	var direct = dict[key] || [];
-	var candidates = direct.slice(0);
-	var parts = splitPinyin(key);
-	if (parts && parts.length > 1) {
-		var combined = [''];
-		for (var i = 0; i < parts.length; i++) {
-			var chars = (dict[parts[i]] || []).slice(0, 4);
-			var next = [];
-			for (var j = 0; j < combined.length; j++) {
-				for (var k = 0; k < chars.length; k++) {
-					next.push(combined[j] + chars[k]);
-					if (next.length >= 12) break;
-				}
-				if (next.length >= 12) break;
-			}
-			combined = next;
-		}
-		candidates = candidates.concat(combined);
-	}
-	var seen = {};
-	return candidates.filter(function(item) {
-		if (!item || seen[item]) return false;
-		seen[item] = true;
-		return true;
-	}).slice(0, 18);
-}
-
 function sendTextToTV(text) {
 	if (!text) return;
 	$.post("/text", { text: text }, function(data) {
 		console.log(data);
 	});
-}
-
-function renderPinyinCandidates() {
-	var $box = $('#pinyinCandidates');
-	var $input = $('#pinyinInput');
-	var candidates = buildPinyinCandidates($input.val());
-	$box.empty();
-	if (!normalizePinyin($input.val())) return;
-	if (!candidates.length) {
-		$box.append($('<span class="pinyin-empty">').text('暂无内置候选，可直接在上方文本框用手机中文键盘输入后发送'));
-		return;
-	}
-	candidates.forEach(function(word, index) {
-		$('<button type="button" class="pinyin-candidate">')
-			.text((index + 1) + '. ' + word)
-			.attr('data-word', word)
-			.appendTo($box);
-	});
-}
-
-function choosePinyinCandidate(word) {
-	$('#inputarea').val(function(_, oldValue) { return oldValue + word; });
-	$('#pinyinInput').val('').focus();
-	$('#pinyinCandidates').empty();
 }
 
 $("#confirm").on("click",function(){
@@ -404,27 +320,6 @@ $("button.tab, div.tab").on("click", function(){
 $("#btnCls").on("click",function(){
 	postKeyCode($(this).attr("data-key"))
 })
-$("#pinyinInput").on("input", renderPinyinCandidates);
-$("#pinyinInput").on("keydown", function(e) {
-	var candidates = buildPinyinCandidates($(this).val());
-	if (e.keyCode >= 49 && e.keyCode <= 57 && candidates[e.keyCode - 49]) {
-		e.preventDefault();
-		choosePinyinCandidate(candidates[e.keyCode - 49]);
-	} else if (e.keyCode === 13 && candidates[0]) {
-		e.preventDefault();
-		choosePinyinCandidate(candidates[0]);
-	} else if (e.keyCode === 27) {
-		$(this).val('');
-		$('#pinyinCandidates').empty();
-	}
-});
-$("#pinyinCandidates").on("click", ".pinyin-candidate", function(){
-	choosePinyinCandidate($(this).attr('data-word'));
-});
-$("#btnPinyinClear").on("click", function(){
-	$('#pinyinInput').val('').focus();
-	$('#pinyinCandidates').empty();
-});
 // 方向键 - 支持长按重复发送
 $(".direction-btn, .direction, #btnDel").on(isSupportTouch ? "touchstart" : "mousedown",function(){
 		var o=$(this);
