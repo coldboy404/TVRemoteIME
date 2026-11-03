@@ -23,9 +23,17 @@ public class IMEServiceBroadCastReceiver extends BroadcastReceiver {
                MEDIA_MOUNTED.equals(intent.getAction())) {
            if(!Environment.isDefaultIME(context)) {
                Log.d(TAG, "startService.....");
-               // 使用显式Intent启动服务 (Android 5.0+要求)
-               Intent serviceIntent = new Intent(context, IMEService.class);
-               context.startService(serviceIntent);
+               try {
+                   // 使用显式Intent启动服务 (Android 5.0+要求)
+                   Intent serviceIntent = new Intent(context, IMEService.class);
+                   context.startService(serviceIntent);
+               } catch (Exception e) {
+                   // Background start restrictions (Android 8+, stricter
+                   // on 12+) throw IllegalStateException here when the
+                   // app is not in a start-allowed state; that must not
+                   // crash the receiver (and with it the app).
+                   Log.w(TAG, "Cannot start service from background: " + e.getMessage());
+               }
                if(AdbHelper.getInstance() == null) AdbHelper.createInstance();
            }
        }

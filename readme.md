@@ -27,6 +27,8 @@
 - 文件下载与电视直播源接口改用真实文件长度作为响应长度（此前误用 `InputStream.available()`，大文件会被截断）；目录列表为空/不可读时返回 404 而不是崩溃，并修复 `parent` 计算的字符串引用比较等空指针隐患。
 - 「清除缓存」此前误删应用文件目录且从不清理临时目录（变量写错），已修复；文件复制改用 try-with-resources 并加大缓冲，目录遍历补空指针防护。
 - 获取本地 IP 时对无 WiFi 的纯网线盒子补空指针防护；清单移除无用的 `MOUNT_UNMOUNT_FILESYSTEMS` 权限、关闭 `allowBackup`、开机广播接收器改为不导出。
+- 补 `QUERY_ALL_PACKAGES`（否则 Android 11+ 包可见性过滤会让 Web 端应用列表几乎为空）与 `REQUEST_INSTALL_PACKAGES`（Android 8+ 安装未知应用所需）权限；广播里后台启动服务加异常兜底，避免 Android 8+/12+ 后台启动限制让接收器崩溃。
+- DLNA 服务绑定改为统一管理并在停止时解绑（此前每次启动都新建连接且从不解绑，反复启动/改名会泄漏绑定并叠加渲染器）；ADB 发送队列改为锁内入队、`running` 改 volatile；删除无人调用的截屏死代码 `ScreenShotActivity`（含清单登记）。
 
 工程：
 

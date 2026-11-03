@@ -17,6 +17,8 @@ import org.fourthline.cling.android.AndroidUpnpServiceImpl;
 public class DLNAUtils {
     private static String TAG = "DLNAUtils";
     private static ZxtMediaRenderer mMediaRenderer = null;
+    private static ServiceConnection serviceConnection = null;
+    private static Context boundContext = null;
 
     public static void setDLNANameSuffix(Context context, String nameSuffix){
         SharedPreferences sharedPreferences = context.getApplicationContext().getSharedPreferences("dlna_settings", 0);
@@ -32,22 +34,30 @@ public class DLNAUtils {
     }
 
     public static void startDLNAService(final Context context){
-        ServiceConnection serviceConnection = new ServiceConnection() {
+        final Context appContext = context.getApplicationContext();
+        // The old code created a brand-new ServiceConnection and bound it
+        // on every call, and nothing ever unbound: repeated service
+        // starts (and every DLNA rename) leaked a binding and stacked
+        // duplicate renderers. Keep one managed binding instead; a
+        // restart unbinds the previous connection first so the rename
+        // flow still re-registers the device with the new name.
+        unbindDLNAService();
+        serviceConnection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
                 AndroidUpnpService upnpService = (AndroidUpnpService) service;
                 Log.i(TAG, "DLNA: onServiceConnected");
-                String dlnaName = context.getString(R.string.app_name);
-                String dlnaNameSuffix = getDLNANameSuffix(context);
+                String dlnaName = appContext.getString(R.string.app_name);
+                String dlnaNameSuffix = getDLNANameSuffix(appContext);
                 if(!TextUtils.isEmpty(dlnaNameSuffix)) dlnaName += "(" + dlnaNameSuffix + ")";
                 if(mMediaRenderer != null){
                     mMediaRenderer.stopAllMediaPlayers();
                     upnpService.getRegistry().removeAllLocalDevices();
                     mMediaRenderer = null;
                 }
-                mMediaRenderer = new ZxtMediaRenderer(1, dlnaName , context);
+                mMediaRenderer = new ZxtMediaRenderer(1, dlnaName , appContext);
                 upnpService.getRegistry().addDevice(mMediaRenderer.getDevice());
-                Environment.toastInHandler(context, context.getString(R.string.app_name)  + " DLNA服务已启动");
+                Environment.toastInHandler(appContext, appContext.getString(R.string.app_name)  + " DLNA服务已启动");
             }
 
             @Override
@@ -55,14 +65,29 @@ public class DLNAUtils {
                 Log.i(TAG, "DLNA: onServiceDisconnected");
             }
         };
-        context.bindService(
-                new Intent(context, AndroidUpnpServiceImpl.class),
+        boundContext = appContext;
+        appContext.bindService(
+                new Intent(appContext, AndroidUpnpServiceImpl.class),
                 serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    private static void unbindDLNAService(){
+        if (serviceConnection != null && boundContext != null) {
+            try {
+                boundContext.unbindService(serviceConnection);
+            } catch (Exception ignored) {
+                // Not bound (anymore); nothing to release.
+            }
+        }
+        serviceConnection = null;
+        boundContext = null;
     }
 
     public static void stopDLNAService(){
         if(mMediaRenderer != null){
             mMediaRenderer.stopAllMediaPlayers();
+            mMediaRenderer = null;
         }
+        unbindDLNAService();
     }
 }

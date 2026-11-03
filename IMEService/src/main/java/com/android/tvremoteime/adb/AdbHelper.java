@@ -29,7 +29,9 @@ public class AdbHelper {
 
     private ArrayDeque<Object> sendDataDeque = new ArrayDeque<>();
     private Thread sendDataThread = null;
-    private boolean running = false;
+    // Written by stop()/init() on other threads, read in the sender
+    // thread loop; must be volatile or the loop may never observe stop.
+    private volatile boolean running = false;
     private Context context;
 
     private AdbHelper(){
@@ -184,8 +186,11 @@ public class AdbHelper {
     }
 
     public void sendData(Object data){
-        sendDataDeque.push(data);
+        // ArrayDeque is not thread-safe: the push must happen under the
+        // same lock as the wait/notify, otherwise concurrent HTTP
+        // threads can corrupt the queue (and a notify can be missed).
         synchronized (sendDataDeque) {
+            sendDataDeque.push(data);
             sendDataDeque.notifyAll();
         }
     }
