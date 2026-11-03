@@ -46,7 +46,7 @@ jobs:
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.1.0"
 
       - name: Check JavaScript syntax
-        run: node --check IMEService/src/main/assets/web/ime_core.js
+        run: node --check IMEService/src/main/res/raw/ime_core.js
 
       - name: Decode release keystore from secrets
         env:
