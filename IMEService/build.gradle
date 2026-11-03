@@ -15,11 +15,31 @@ android {
         versionName "2.1.6"
     }
 
+    // Release signing is driven by environment variables so the keystore can
+    // live in GitHub Secrets (see .github/workflows/release.yml). When the env
+    // vars are absent (local dev, PR CI) the release build stays unsigned.
+    signingConfigs {
+        release {
+            def ksPath = System.getenv("RELEASE_KEYSTORE_PATH")
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword System.getenv("RELEASE_KEY_PASSWORD")
+                v1SigningEnabled true
+                v2SigningEnabled true
+                v3SigningEnabled true
+            }
+        }
+    }
     buildTypes {
         debug {
             minifyEnabled false
         }
         release {
+            if (System.getenv("RELEASE_KEYSTORE_PATH")) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), '../proguard-project.txt'

@@ -1,0 +1,139 @@
+name: Release
+
+# Builds the release APK signed with the keystore stored in GitHub Secrets
+# (RELEASE_KEYSTORE_BASE64 / RELEASE_KEYSTORE_PASSWORD / RELEASE_KEY_ALIAS /
+# RELEASE_KEY_PASSWORD), uploads it to the GitHub Release for the given tag
+# (creating the release if needed), then updates released/version.json and
+# released/IMEService-release.apk on master.
+#
+# Manual dispatch only: Actions tab -> Release -> Run workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v2.1.6 (must match versionName in IMEService/build.gradle)"
+        required: true
+        type: string
+      message:
+        description: "Update message shown in the app (released/version.json)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Install Android SDK packages
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.1.0"
+
+      - name: Check JavaScript syntax
+        run: node --check IMEService/src/main/assets/web/ime_core.js
+
+      - name: Decode release keystore from secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 secret is not set"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :IMEService:assembleRelease --no-daemon --console=plain
+
+      - name: Verify APK and collect facts
+        id: apk
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          SRC="IMEService/build/outputs/apk/release/IMEService-release.apk"
+          [ -f "$SRC" ] || { echo "::error::signed APK not found at $SRC"; exit 1; }
+          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/36.1.0/apksigner"
+          "$APKSIGNER" verify --verbose "$SRC"
+          BADGING=$("$ANDROID_SDK_ROOT/build-tools/36.1.0/aapt" dump badging "$SRC" | head -1)
+          echo "$BADGING"
+          VNAME=$(echo "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
+          VCODE=$(echo "$BADGING" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")
+          if [ "v$VNAME" != "$TAG" ]; then
+            echo "::error::tag $TAG does not match APK versionName $VNAME"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$SRC" dist/IMEService-release.apk
+          SHA=$(sha256sum dist/IMEService-release.apk | cut -d' ' -f1)
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "vname=$VNAME" >> "$GITHUB_OUTPUT"
+          echo "vcode=$VCODE" >> "$GITHUB_OUTPUT"
+          echo "APK SHA-256: $SHA (versionCode $VCODE, versionName $VNAME)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload APK to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/IMEService-release.apk --clobber
+          else
+            gh release create "$TAG" dist/IMEService-release.apk \
+              --title "$TAG" --notes "Automated release $TAG. See released/version.json for the update message."
+          fi
+
+      - name: Update released/version.json and released APK on master
+        env:
+          TAG: ${{ inputs.tag }}
+          MESSAGE: ${{ inputs.message }}
+          VNAME: ${{ steps.apk.outputs.vname }}
+          VCODE: ${{ steps.apk.outputs.vcode }}
+          SHA: ${{ steps.apk.outputs.sha256 }}
+        run: |
+          cp dist/IMEService-release.apk released/IMEService-release.apk
+          python3 - << 'PYEOF'
+          import json, os
+          data = {
+              "versionCode": int(os.environ["VCODE"]),
+              "versionName": os.environ["VNAME"],
+              "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/%s/IMEService-release.apk" % os.environ["TAG"],
+              "apkSha256": os.environ["SHA"],
+              "message": os.environ["MESSAGE"],
+          }
+          with open("released/version.json", "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=4)
+              f.write("\n")
+          print(json.dumps(data, ensure_ascii=False))
+          PYEOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add released/version.json released/IMEService-release.apk
+          if git diff --cached --quiet; then
+            echo "released/ already up to date"
+          else
+            git commit -m "release: $TAG (version.json + APK)"
+            git push origin master
+          fi
