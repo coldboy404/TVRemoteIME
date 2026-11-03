@@ -95,14 +95,18 @@ public class AdbHelper {
                         String msg = null;
                         if(data instanceof Integer){
                             msg = "shell:input keyevent " + String.valueOf(data);
+                        }else if(data instanceof ShellCommand){
+                            msg = ((ShellCommand) data).command;
                         }else if(data instanceof String){
-                            String strData = (String) data;
-                            // 如果是以 "shell:" 开头，则直接作为原始命令发送
-                            if(strData.startsWith("shell:")){
-                                msg = strData;
-                            }else{
-                                msg = "shell:input text \"" + strData.replaceAll("\"", "\\\"").replaceAll("\\\\", "\\\\") + "\"";
-                            }
+                            // Remote text ALWAYS goes through `input text`.
+                            // The old code passed any string starting with
+                            // "shell:" through as a raw ADB shell command,
+                            // so anyone on the LAN could run arbitrary
+                            // commands on the box via POST /text. Raw
+                            // commands are now only available through
+                            // sendShellCommand() (internal callers, whose
+                            // arguments are validated integers).
+                            msg = "shell:input text \"" + escapeForShell((String) data) + "\"";
                         }else{
                             continue;
                         }
@@ -184,6 +188,42 @@ public class AdbHelper {
         synchronized (sendDataDeque) {
             sendDataDeque.notifyAll();
         }
+    }
+
+    /** Wrapper that marks a string as a trusted raw shell command. */
+    private static final class ShellCommand {
+        final String command;
+        ShellCommand(String command) {
+            this.command = command;
+        }
+    }
+
+    /**
+     * Enqueue a raw ADB shell command. INTERNAL USE ONLY: callers must
+     * build the command from validated values (the mouse fallback builds
+     * tap/swipe commands from integers). Never pass text received from
+     * the network here — remote text goes through sendData() and is
+     * forced onto the `input text` path.
+     */
+    public void sendShellCommand(String command){
+        if (command == null) return;
+        sendData(new ShellCommand(command));
+    }
+
+    /**
+     * Escape text for inclusion inside a double-quoted shell argument.
+     * Backslash must be escaped first; the old code escaped quotes first
+     * and then doubled every backslash, undoing its own quote escaping.
+     * `$` and backticks are escaped too, since the device shell would
+     * otherwise expand them inside double quotes.
+     */
+    static String escapeForShell(String text){
+        return text.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("$", "\\$")
+                .replace("`", "\\`")
+                .replace("\r", " ")
+                .replace("\n", " ");
     }
 
     private static AdbHelper instance = null;

@@ -35,9 +35,17 @@ public class SecurityManager {
             return null;
         }
 
-        // Decode URL encoding
+        // Decode URL encoding repeatedly (bounded) so double-encoded
+        // traversal sequences such as %252e%252e%252f are unfolded
+        // before the checks below run.
         try {
-            requestedPath = java.net.URLDecoder.decode(requestedPath, "UTF-8");
+            for (int i = 0; i < 3; i++) {
+                String decoded = java.net.URLDecoder.decode(requestedPath, "UTF-8");
+                if (decoded.equals(requestedPath)) {
+                    break;
+                }
+                requestedPath = decoded;
+            }
         } catch (Exception e) {
             return null;
         }
@@ -50,14 +58,14 @@ public class SecurityManager {
         // Normalize path separators
         requestedPath = requestedPath.replace('\\', '/');
 
-        // Check for path traversal patterns
-        if (requestedPath.contains("../") ||
-            requestedPath.contains("..\\") ||
-            requestedPath.contains("/..") ||
-            requestedPath.contains("\\..") ||
-            requestedPath.equals("..")) {
-            Log.w(TAG, "Path traversal attempt detected: " + requestedPath);
-            return null;
+        // Reject any ".." path segment, in any position. Checking whole
+        // segments (not substrings) still blocks "../", "/..", ".." and
+        // "a/../../b" while allowing legitimate names such as "a..b".
+        for (String segment : requestedPath.split("/")) {
+            if (segment.equals("..")) {
+                Log.w(TAG, "Path traversal attempt detected: " + requestedPath);
+                return null;
+            }
         }
 
         // Remove leading slashes for relative path
@@ -75,7 +83,11 @@ public class SecurityManager {
         try {
             String canonicalFile = file.getCanonicalPath();
             String canonicalBase = baseDir.getCanonicalPath();
-            return canonicalFile.startsWith(canonicalBase);
+            // The file itself, or a descendant. A plain startsWith() check
+            // would also accept siblings sharing the base as a name prefix
+            // (e.g. "/sdcard_evil" for base "/sdcard").
+            return canonicalFile.equals(canonicalBase)
+                    || canonicalFile.startsWith(canonicalBase + File.separator);
         } catch (IOException e) {
             Log.e(TAG, "Failed to validate path", e);
             return false;

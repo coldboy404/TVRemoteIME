@@ -67,8 +67,12 @@ public class TVRequestProcesser implements RequestProcesser {
             return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.OK, "fail");
         }else{
             try {
-                InputStream inputStream = tvFile.exists() ? new FileInputStream(tvFile) : context.getResources().openRawResource(R.raw.tv);
-                return RemoteServer.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, "text/plain; charset=utf-8", inputStream, (long) inputStream.available());
+                boolean fromFile = tvFile.exists();
+                InputStream inputStream = fromFile ? new FileInputStream(tvFile) : context.getResources().openRawResource(R.raw.tv);
+                // available() is not the content length; for the file
+                // case use the real length so clients are not truncated.
+                long length = fromFile ? tvFile.length() : (long) inputStream.available();
+                return RemoteServer.newFixedLengthResponse(NanoHTTPD.Response.Status.OK, "text/plain; charset=utf-8", inputStream, length);
             } catch (IOException ioex) {
                 return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, "SERVER INTERNAL ERROR: IOException: " + ioex.getMessage());
             }

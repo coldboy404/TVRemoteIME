@@ -293,7 +293,7 @@ Log.i(TAG, "Screen size: " + screenWidth + "x" + screenHeight);
         }
         if (adbHelper != null && adbHelper.isRunning()) {
             String command = String.format("shell:input tap %d %d", x, y);
-            adbHelper.sendData(command);
+            adbHelper.sendShellCommand(command);
             Log.w(TAG, "ADB click executed at " + x + "," + y);
             return true;
         }
@@ -356,7 +356,7 @@ Log.i(TAG, "Screen size: " + screenWidth + "x" + screenHeight);
         AdbHelper adbHelper = AdbHelper.getInstance();
         if (adbHelper != null && adbHelper.isRunning()) {
             String command = String.format("shell:input swipe %d %d %d %d %d", x, y, x, y, duration);
-            adbHelper.sendData(command);
+            adbHelper.sendShellCommand(command);
             Log.d(TAG, "ADB long click executed at " + x + "," + y + " duration=" + duration);
             return true;
         }
@@ -513,7 +513,7 @@ Log.i(TAG, "Screen size: " + screenWidth + "x" + screenHeight);
         AdbHelper adbHelper = AdbHelper.getInstance();
         if (adbHelper != null && adbHelper.isRunning()) {
             String command = String.format("shell:input swipe %d %d %d %d 200", startX, startY, endX, endY);
-            adbHelper.sendData(command);
+            adbHelper.sendShellCommand(command);
             Log.d(TAG, "ADB swipe executed from " + startX + "," + startY + " to " + endX + "," + endY);
             return true;
         }

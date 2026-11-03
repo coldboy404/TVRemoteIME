@@ -6,10 +6,14 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
+
+import androidx.core.content.FileProvider;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -133,7 +137,7 @@ public class AppPackagesHelper {
 
     private static ApplicationInfo getApplicationInfo(String packageName, Context context){
         ApplicationInfo applicationInfo = null;
-        if(!packageName.isEmpty()) {
+        if(packageName != null && !packageName.isEmpty()) {
             PackageManager pm = context.getPackageManager();
             try {
                 applicationInfo = pm.getApplicationInfo(packageName, 0);
@@ -146,10 +150,20 @@ public class AppPackagesHelper {
 
     public static void installPackage(final File apkFile, final Context context){
         try {
-            Uri uri = Uri.fromFile(apkFile);
-            Intent intent = new Intent();
+            // A file:// URI throws FileUriExposedException when the app
+            // targets API 24+, which silently broke both self-update
+            // installs and web-triggered APK installs on modern boxes.
+            // Hand the installer a FileProvider content URI instead.
+            Uri uri;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                uri = FileProvider.getUriForFile(context,
+                        context.getPackageName() + ".fileprovider", apkFile);
+            } else {
+                uri = Uri.fromFile(apkFile);
+            }
+            Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.setAction(Intent.ACTION_VIEW);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.setDataAndType(uri, "application/vnd.android.package-archive");
             context.startActivity(intent);
             Log.i(IMEService.TAG, String.format("已安装应用包[%s]", apkFile.getName()));
@@ -178,6 +192,9 @@ public class AppPackagesHelper {
             PackageManager pm = context.getPackageManager();
             Intent intent = pm.getLaunchIntentForPackage(packageName);
             if(intent != null){
+                // Callers run in a Service context; without NEW_TASK this
+                // startActivity throws and the launch silently fails.
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
             }
             Log.i(IMEService.TAG, String.format("已运行应用包[%s]", packageName));
@@ -186,6 +203,14 @@ public class AppPackagesHelper {
         }
     }
     public static void runSystemPackage(final String packageName, final Context context){
+        // Despite the parameter name, the web UI passes an Intent action
+        // here (its only use is opening Settings). Treating arbitrary
+        // remote input as an action lets any LAN client fire any implicit
+        // intent the box will resolve, so restrict it to Settings actions.
+        if (packageName == null || !packageName.startsWith("android.settings.")) {
+            Log.w(IMEService.TAG, String.format("拒绝非设置类系统动作[%s]", packageName));
+            return;
+        }
         try {
             Intent intent = new Intent(packageName);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -198,10 +223,23 @@ public class AppPackagesHelper {
     public static byte[] getAppIcon(String packageName, Context context){
         ApplicationInfo applicationInfo = getApplicationInfo(packageName, context);
         if(applicationInfo == null) return  null;
-        BitmapDrawable bitmap = (BitmapDrawable)applicationInfo.loadIcon(context.getPackageManager());
+        // loadIcon() is not always a BitmapDrawable: on API 26+ most apps
+        // return an AdaptiveIconDrawable, and the old blind cast threw a
+        // ClassCastException that killed the /icon/ request. Rasterize
+        // any Drawable instead.
+        Drawable icon = applicationInfo.loadIcon(context.getPackageManager());
+        if(icon == null) return null;
+        int width = Math.max(icon.getIntrinsicWidth(), 1);
+        int height = Math.max(icon.getIntrinsicHeight(), 1);
+        if(width > 192) width = 192;
+        if(height > 192) height = 192;
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        icon.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        icon.draw(canvas);
 
         ByteArrayOutputStream data = new ByteArrayOutputStream();
-        bitmap.getBitmap().compress(Bitmap.CompressFormat.PNG, 100, data);
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, data);
         return data.toByteArray();
     }
 }

@@ -100,6 +100,10 @@ public class FileRequestProcesser  implements RequestProcesser {
         JSONArray files = new JSONArray();
         try {
             File[] subfiles = path.listFiles();
+            if (subfiles == null) {
+                // Not a directory, does not exist, or not readable.
+                return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.NOT_FOUND, "Error 404, directory not found.");
+            }
             Arrays.sort(subfiles, new Comparator<File>() {
                 @Override
                 public int compare(File f1, File f2) {
@@ -124,7 +128,12 @@ public class FileRequestProcesser  implements RequestProcesser {
             }
 
             JSONObject data = new JSONObject();
-            if(!TextUtils.isEmpty(dirName) && dirName != "/") data.put("parent", path.getParent().substring(root.length()));
+            if(!TextUtils.isEmpty(dirName) && !"/".equals(dirName)) {
+                String parent = path.getParent();
+                if (parent != null && parent.length() >= root.length()) {
+                    data.put("parent", parent.substring(root.length()));
+                }
+            }
             data.put("dirs", dirs);
             data.put("files", files);
             return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, data.toString());
@@ -139,13 +148,16 @@ public class FileRequestProcesser  implements RequestProcesser {
         if (file == null) {
             return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.FORBIDDEN, "Invalid path");
         }
-        if(!file.exists()){
+        if(!file.exists() || !file.isFile()){
             return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.NOT_FOUND, "Error 404, file not found.");
         }
         try{
             InputStream inputStream = new FileInputStream(file);
+            // available() is only the bytes readable without blocking, not
+            // the file size; using it truncated larger downloads. Report
+            // the real length so clients receive the whole file.
             return RemoteServer.newFixedLengthResponse(NanoHTTPD.Response.Status.OK,
-                    NanoHTTPD.getMimeTypeForFile(file.getName()) + "; charset=utf-8", inputStream, (long)inputStream.available());
+                    NanoHTTPD.getMimeTypeForFile(file.getName()) + "; charset=utf-8", inputStream, file.length());
         } catch (Exception e) {
             return RemoteServer.createPlainTextResponse(NanoHTTPD.Response.Status.NOT_FOUND, "Error 404, file not found.");
         }
@@ -165,10 +177,32 @@ public class FileRequestProcesser  implements RequestProcesser {
                 }
                 File localFile = new File(localFilename);
                 saveFilename = new File(saveFilename, localFile.getName());
+                // Defense in depth: the joined destination must still be
+                // inside external storage.
+                if (!securityManager.isPathWithinBase(saveFilename,
+                        Environment.getExternalStorageDirectory())) {
+                    return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK, "{\"success\":false,\"error\":\"Invalid path\"}");
+                }
                 r = localFile.renameTo(saveFilename);
             }
         }
         return RemoteServer.createJSONResponse(NanoHTTPD.Response.Status.OK,  "{\"success\":" + (r ? "true": "false") + "}");
+    }
+
+    /**
+     * True when the file is the external storage root itself. Deleting,
+     * cutting or copy-from the root would wipe (or recursively duplicate)
+     * the entire shared storage: getSafeFile() maps "" and "/" onto the
+     * root and its within-base check passes for the base itself, so
+     * destructive operations must reject it explicitly.
+     */
+    private boolean isStorageRoot(File file) {
+        try {
+            return file.getCanonicalPath().equals(
+                    Environment.getExternalStorageDirectory().getCanonicalPath());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private void batchDeleteFile(String paths){
@@ -177,7 +211,7 @@ public class FileRequestProcesser  implements RequestProcesser {
             if(!TextUtils.isEmpty(p)) {
                 // Validate path to prevent path traversal
                 File path = securityManager.getSafeFile(p);
-                if (path != null) {
+                if (path != null && !isStorageRoot(path)) {
                     RemoteServerFileManager.deleteFile(path);
                 }
             }
@@ -193,7 +227,7 @@ public class FileRequestProcesser  implements RequestProcesser {
             if(!TextUtils.isEmpty(p)) {
                 // Validate source path
                 File source = securityManager.getSafeFile(p);
-                if (source != null) {
+                if (source != null && !isStorageRoot(source)) {
                     RemoteServerFileManager.copyFile(source, targetPathFile);
                 }
             }
@@ -209,7 +243,7 @@ public class FileRequestProcesser  implements RequestProcesser {
             if(!TextUtils.isEmpty(p)) {
                 // Validate source path
                 File source = securityManager.getSafeFile(p);
-                if (source != null) {
+                if (source != null && !isStorageRoot(source)) {
                     RemoteServerFileManager.cutFile(source, targetPathFile);
                 }
             }

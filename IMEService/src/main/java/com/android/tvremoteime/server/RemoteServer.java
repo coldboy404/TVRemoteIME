@@ -82,10 +82,19 @@ public class RemoteServer extends NanoHTTPD
 
     public static String getLocalIPAddress(Context context){
         WifiManager wifiManager = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
-        int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
+        // On ethernet-only boxes WifiManager / connection info can be
+        // null; the old code dereferenced both unconditionally and
+        // crashed the address display (and QR code) there.
+        int ipAddress = 0;
+        if (wifiManager != null && wifiManager.getConnectionInfo() != null) {
+            ipAddress = wifiManager.getConnectionInfo().getIpAddress();
+        }
         if(ipAddress == 0){
             try {
                 Enumeration<NetworkInterface> enumerationNi = NetworkInterface.getNetworkInterfaces();
+                if (enumerationNi == null) {
+                    return "0.0.0.0";
+                }
                 while (enumerationNi.hasMoreElements()) {
                     NetworkInterface networkInterface = enumerationNi.nextElement();
                     String interfaceName = networkInterface.getDisplayName();
@@ -157,9 +166,79 @@ public class RemoteServer extends NanoHTTPD
     }
 
 
+    /**
+     * Basic CSRF / DNS-rebinding guard for the control server.
+     *
+     * The server has no login, so any web page open in a browser on the
+     * LAN could otherwise fire cross-origin POSTs at the box (delete
+     * files, uninstall apps) and a rebinding domain could read responses.
+     * Browsers always send Host, and send Origin on POST; the checks
+     * below reject requests whose Host is a (rebinding) domain name and
+     * cross-origin POSTs, while leaving direct LAN clients (the bundled
+     * web UI, curl, apps — no Origin header) untouched.
+     *
+     * This is a seatbelt, not authentication: anyone on the LAN can
+     * still call the API directly. See the audit notes in readme.
+     */
+    private static String headerValue(Map<String, String> headers, String name) {
+        // NanoHTTPD lower-cases header names, but do not depend on it.
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(name)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private boolean isRequestOriginAllowed(IHTTPSession session) {
+        Map<String, String> headers = session.getHeaders();
+        String host = stripPort(headerValue(headers, "host"));
+        if (host != null && !isLocalHostName(host)) {
+            Log.w(IMEService.TAG, "Rejected request with foreign Host: " + host);
+            return false;
+        }
+        if (session.getMethod() == Method.POST) {
+            String origin = headerValue(headers, "origin");
+            if (origin != null && host != null) {
+                String originHost = stripPort(origin.replaceFirst("^[a-zA-Z][a-zA-Z0-9+.-]*://", ""));
+                if (!originHost.equalsIgnoreCase(host)) {
+                    Log.w(IMEService.TAG, "Rejected cross-origin POST: Origin=" + origin + " Host=" + host);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static String stripPort(String host) {
+        if (host == null) return null;
+        host = host.trim();
+        if (host.startsWith("[")) { // IPv6 literal
+            int end = host.indexOf(']');
+            return end >= 0 ? host.substring(1, end) : host;
+        }
+        int colon = host.indexOf(':');
+        return colon >= 0 ? host.substring(0, colon) : host;
+    }
+
+    private static boolean isLocalHostName(String host) {
+        if (host.equalsIgnoreCase("localhost") || host.endsWith(".local")) {
+            return true;
+        }
+        // IPv4 literal
+        if (host.matches("\\d{1,3}(\\.\\d{1,3}){3}")) {
+            return true;
+        }
+        // IPv6 literal (after bracket stripping it still contains ':')
+        return host.contains(":");
+    }
+
     @Override
     public Response serve(IHTTPSession session) {
         Log.i(IMEService.TAG, "接收到HTTP请求：" + session.getMethod() + " " + session.getUri());
+        if (!isRequestOriginAllowed(session)) {
+            return createPlainTextResponse(NanoHTTPD.Response.Status.FORBIDDEN, "Forbidden");
+        }
         if(!session.getUri().isEmpty()) {
             String fileName = session.getUri().trim();
             if (fileName.indexOf('?') >= 0) {

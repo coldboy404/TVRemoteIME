@@ -117,7 +117,7 @@ public class RemoteServerFileManager implements NanoHTTPD.TempFileManager {
     public static void clearAllFiles(){
         try{
             if(filesDir.exists()) deleteDirFiles(filesDir);
-            if(tmpDataDir.exists()) deleteDirFiles(filesDir);
+            if(tmpDataDir.exists()) deleteDirFiles(tmpDataDir);
             if(playerCacheDir != null && playerCacheDir.exists()) deleteDirFiles(playerCacheDir);
             File torrentFile = getPlayTorrentFile();
             if(torrentFile.exists()) torrentFile.delete();
@@ -127,6 +127,7 @@ public class RemoteServerFileManager implements NanoHTTPD.TempFileManager {
     }
     public static void deleteDirFiles(File file){
         File[] files =  file.listFiles();
+        if (files == null) return;
         for (File f : files) {
             try {
                 if(f.isDirectory())deleteDirFiles(f);
@@ -176,6 +177,7 @@ public class RemoteServerFileManager implements NanoHTTPD.TempFileManager {
                 File newDir = new File(targetPath, sourceFile.getName());
                 if(newDir.mkdir()){
                     File[] files =  sourceFile.listFiles();
+                    if (files == null) return;
                     for (File f : files) {
                         copyFile(f, newDir);
                     }
@@ -188,16 +190,15 @@ public class RemoteServerFileManager implements NanoHTTPD.TempFileManager {
     }
     private static void copyFileImpl(File sourceFile, File targetFile){
         if(targetFile.exists()) return;
-        try {
-            FileInputStream ins = new FileInputStream(sourceFile);
-            FileOutputStream out = new FileOutputStream(targetFile);
-            byte[] b = new byte[1024];
-            int n = 0;
+        // try-with-resources: the old code leaked both streams whenever
+        // read/write threw, and copied with a 1 KB buffer.
+        try (FileInputStream ins = new FileInputStream(sourceFile);
+             FileOutputStream out = new FileOutputStream(targetFile)) {
+            byte[] b = new byte[8192];
+            int n;
             while ((n = ins.read(b)) != -1) {
                 out.write(b, 0, n);
             }
-            ins.close();
-            out.close();
         }catch (Exception ignored) {
         }
     }
