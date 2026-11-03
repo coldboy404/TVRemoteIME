@@ -22,11 +22,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
+      # The ubuntu runner image already ships an Android SDK. The
+      # android-actions/setup-android action is not used on purpose:
+      # its bundled sdkmanager invocation tries to install the removed
+      # legacy 'tools' package and fails on current SDK repositories.
       - name: Install SDK packages
-        run: sdkmanager "platforms;android-36" "build-tools;36.1.0"
+        run: |
+          SDKMANAGER="$(command -v sdkmanager || echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager")"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.1.0"
 
       - name: Check web assets syntax
         run: node --check IMEService/src/main/res/raw/ime_core.js
