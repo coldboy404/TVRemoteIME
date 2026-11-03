@@ -1,6 +1,7 @@
 {
-    "versionCode": 18,
-    "versionName": "2.1.5",
-    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.5/IMEService-release.apk",
-    "message": "1. 移除Web控制端的中文拼音输入候选框。\r\n2. 保留原有远程文本输入、遥控、触控板、文件和应用管理功能。"
+    "versionCode": 19,
+    "versionName": "2.1.6",
+    "installAPK": "https://github.com/coldboy404/TVRemoteIME/releases/download/v2.1.6/IMEService-release.apk",
+    "apkSha256": "080b7dca278354af5ccceb9ebb463b5f2c4dc8f6f5375815a23b0a6c4e402918",
+    "message": "注意：本版本更换了签名，无法直接覆盖安装，请先卸载旧版再安装本版（仅此一次）。\r\n更新内容：\r\n1. 修复 ADB shell 命令直通、自更新证书校验关闭等严重安全问题。\r\n2. 修复 APK 安装在 Android 7+ 失效、应用列表在 Android 11+ 为空、图标崩溃、文件下载截断等问题。\r\n3. 新增 Host/Origin 防护、DLNA 泄漏修复与 GitHub Actions 构建。"
 }
